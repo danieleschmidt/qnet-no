@@ -136,9 +136,9 @@ If you use QNet-NO in your research, please cite:
 ```bibtex
 @software{qnet-no2025,
   title={QNet-NO: Quantum-Network Neural Operator Library},
-  author={Your Name and Collaborators},
+  author={Daniel Schmidt},
   year={2025},
-  url={https://github.com/yourusername/qnet-no}
+  url={https://github.com/danieleschmidt/qnet-no}
 }
 
 @article{distributed-qnn2025,
