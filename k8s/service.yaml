@@ -1,0 +1,68 @@
+# Services for QNet-NO components
+apiVersion: v1
+kind: Service
+metadata:
+  name: qnet-no-coordinator-service
+  namespace: qnet-no
+  labels:
+    app: qnet-no
+    component: coordinator
+spec:
+  selector:
+    app: qnet-no
+    component: coordinator
+  ports:
+  - name: api
+    port: 8000
+    targetPort: 8000
+    protocol: TCP
+  - name: web
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: qnet-no-worker-service
+  namespace: qnet-no
+  labels:
+    app: qnet-no
+    component: worker
+spec:
+  selector:
+    app: qnet-no
+    component: worker
+  ports:
+  - name: api
+    port: 8000
+    targetPort: 8000
+    protocol: TCP
+  type: ClusterIP
+
+---
+# Load balancer for external access
+apiVersion: v1
+kind: Service
+metadata:
+  name: qnet-no-external
+  namespace: qnet-no
+  labels:
+    app: qnet-no
+    component: external
+spec:
+  selector:
+    app: qnet-no
+    component: coordinator
+  ports:
+  - name: api
+    port: 80
+    targetPort: 8000
+    protocol: TCP
+  - name: web
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  type: LoadBalancer

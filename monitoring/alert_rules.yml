@@ -1,0 +1,93 @@
+# Prometheus Alert Rules for QNet-NO
+groups:
+- name: qnet-no-alerts
+  rules:
+  # High error rate alert
+  - alert: QNetHighErrorRate
+    expr: rate(qnet_no_errors_total[5m]) > 0.1
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High error rate detected in QNet-NO"
+      description: "Error rate is {{ $value }} errors per second for {{ $labels.instance }}"
+
+  # High memory usage
+  - alert: QNetHighMemoryUsage
+    expr: (qnet_no_memory_usage_bytes / qnet_no_memory_limit_bytes) > 0.9
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "QNet-NO high memory usage"
+      description: "Memory usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+
+  # High GPU utilization
+  - alert: QNetHighGPUUtilization
+    expr: nvidia_smi_utilization_gpu_ratio > 0.95
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High GPU utilization"
+      description: "GPU utilization is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+
+  # Node down
+  - alert: QNetNodeDown
+    expr: up{job=~"qnet-no-.*"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "QNet-NO node is down"
+      description: "Node {{ $labels.instance }} has been down for more than 1 minute"
+
+  # Quantum circuit fidelity degradation
+  - alert: QNetLowFidelity
+    expr: qnet_no_circuit_fidelity < 0.85
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Low quantum circuit fidelity"
+      description: "Circuit fidelity is {{ $value }} on {{ $labels.instance }}"
+
+  # Training convergence issues
+  - alert: QNetTrainingDiverged
+    expr: increase(qnet_no_training_loss[10m]) > 0.1
+    for: 15m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Training loss is increasing"
+      description: "Training loss has increased by {{ $value }} over 10 minutes on {{ $labels.instance }}"
+
+  # Entanglement quality degradation
+  - alert: QNetLowEntanglementQuality
+    expr: qnet_no_entanglement_quality < 0.7
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Low entanglement quality detected"
+      description: "Entanglement quality is {{ $value }} on {{ $labels.instance }}"
+
+  # Cache hit rate too low
+  - alert: QNetLowCacheHitRate
+    expr: (qnet_no_cache_hits_total / (qnet_no_cache_hits_total + qnet_no_cache_misses_total)) < 0.3
+    for: 10m
+    labels:
+      severity: info
+    annotations:
+      summary: "Low cache hit rate"
+      description: "Cache hit rate is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+
+  # Distributed task queue buildup
+  - alert: QNetTaskQueueBuildup
+    expr: qnet_no_task_queue_size > 100
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Task queue building up"
+      description: "Task queue has {{ $value }} pending tasks on {{ $labels.instance }}"

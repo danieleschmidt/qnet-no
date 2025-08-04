@@ -1,0 +1,8 @@
+# Kubernetes namespace for QNet-NO
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: qnet-no
+  labels:
+    name: qnet-no
+    app: quantum-neural-operators
