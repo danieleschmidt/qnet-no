@@ -1,0 +1,17 @@
+# ConfigMap for QNet-NO configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: qnet-no-config
+  namespace: qnet-no
+data:
+  QNET_ENV: "production"
+  QNET_LOG_LEVEL: "INFO"
+  QNET_LOG_DIR: "/app/logs"
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  POSTGRES_HOST: "postgres-service"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "qnet_experiments"
+  PROMETHEUS_HOST: "prometheus-service"
+  PROMETHEUS_PORT: "9090"
