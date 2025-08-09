@@ -1,13 +1,15 @@
 """Distributed tensor operations for quantum neural networks."""
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, TYPE_CHECKING
 import jax
 import jax.numpy as jnp
 import numpy as np
-from ..networks.photonic_network import PhotonicNetwork
+
+if TYPE_CHECKING:
+    from ..networks.photonic_network import PhotonicNetwork
 
 
-def tensor_product_einsum(equation: str, *operands, network: PhotonicNetwork) -> jnp.ndarray:
+def tensor_product_einsum(equation: str, *operands, network: 'PhotonicNetwork') -> jnp.ndarray:
     """
     Distributed Einstein summation with quantum enhancement.
     
@@ -48,7 +50,7 @@ def tensor_product_einsum(equation: str, *operands, network: PhotonicNetwork) ->
 
 
 def plan_tensor_distribution(input_indices: List[str], output_indices: str,
-                           operands: tuple, network: PhotonicNetwork) -> Dict[str, Any]:
+                           operands: tuple, network: 'PhotonicNetwork') -> Dict[str, Any]:
     """Plan optimal distribution of tensor computation across quantum nodes."""
     n_nodes = len(network.quantum_nodes)
     
@@ -90,7 +92,7 @@ def estimate_contraction_complexity(input_indices: List[str], tensor_shapes: Lis
 
 
 def create_distribution_strategy(input_indices: List[str], output_indices: str,
-                               tensor_shapes: List[tuple], network: PhotonicNetwork) -> Dict[str, Any]:
+                               tensor_shapes: List[tuple], network: 'PhotonicNetwork') -> Dict[str, Any]:
     """Create strategy for distributing tensor computation."""
     n_nodes = len(network.quantum_nodes)
     
@@ -136,7 +138,7 @@ def create_distribution_strategy(input_indices: List[str], output_indices: str,
 
 def execute_distributed_einsum(equation: str, operands: tuple,
                              distribution_plan: Dict[str, Any], 
-                             network: PhotonicNetwork) -> jnp.ndarray:
+                             network: 'PhotonicNetwork') -> jnp.ndarray:
     """Execute Einstein summation across distributed quantum nodes."""
     strategy = distribution_plan['strategy']
     
@@ -247,7 +249,7 @@ def combine_distributed_results(node_results: List[jnp.ndarray], equation: str) 
     return combined_result
 
 
-def quantum_enhanced_einsum(equation: str, operands: tuple, network: PhotonicNetwork) -> jnp.ndarray:
+def quantum_enhanced_einsum(equation: str, operands: tuple, network: 'PhotonicNetwork') -> jnp.ndarray:
     """Apply quantum enhancement to local einsum computation."""
     # Standard computation
     result = jnp.einsum(equation, *operands)
@@ -290,7 +292,7 @@ def quantum_enhanced_einsum(equation: str, operands: tuple, network: PhotonicNet
 
 
 def distributed_dot_product(a: jnp.ndarray, b: jnp.ndarray, 
-                          network: PhotonicNetwork) -> jnp.ndarray:
+                          network: 'PhotonicNetwork') -> jnp.ndarray:
     """
     Distributed dot product across quantum network nodes.
     
@@ -318,7 +320,7 @@ def distributed_dot_product(a: jnp.ndarray, b: jnp.ndarray,
         return tensor_product_einsum(equation, a, b, network=network)
 
 
-def quantum_tensor_decomposition(tensor: jnp.ndarray, network: PhotonicNetwork,
+def quantum_tensor_decomposition(tensor: jnp.ndarray, network: 'PhotonicNetwork',
                                 max_rank: int = 64, method: str = "svd") -> Dict[str, jnp.ndarray]:
     """
     Quantum-enhanced tensor decomposition using distributed processing.
@@ -336,7 +338,7 @@ def quantum_tensor_decomposition(tensor: jnp.ndarray, network: PhotonicNetwork,
         raise ValueError(f"Unknown decomposition method: {method}")
 
 
-def quantum_svd_decomposition(tensor: jnp.ndarray, network: PhotonicNetwork,
+def quantum_svd_decomposition(tensor: jnp.ndarray, network: 'PhotonicNetwork',
                             max_rank: int) -> Dict[str, jnp.ndarray]:
     """Quantum-enhanced Singular Value Decomposition."""
     # Reshape tensor to matrix for SVD
@@ -370,7 +372,7 @@ def quantum_svd_decomposition(tensor: jnp.ndarray, network: PhotonicNetwork,
     }
 
 
-def distributed_svd(matrix: jnp.ndarray, network: PhotonicNetwork,
+def distributed_svd(matrix: jnp.ndarray, network: 'PhotonicNetwork',
                    max_rank: int) -> tuple:
     """Distribute SVD computation across quantum nodes."""
     m, n = matrix.shape
@@ -459,7 +461,7 @@ def quantum_node_svd(matrix: jnp.ndarray, quantum_node: Dict[str, Any],
     return U, S_enhanced, Vh
 
 
-def quantum_enhanced_svd(matrix: jnp.ndarray, network: PhotonicNetwork,
+def quantum_enhanced_svd(matrix: jnp.ndarray, network: 'PhotonicNetwork',
                         max_rank: int) -> tuple:
     """Apply quantum enhancement to standard SVD."""
     # Standard SVD
@@ -486,7 +488,7 @@ def quantum_enhanced_svd(matrix: jnp.ndarray, network: PhotonicNetwork,
     return U, S, Vh
 
 
-def quantum_cp_decomposition(tensor: jnp.ndarray, network: PhotonicNetwork,
+def quantum_cp_decomposition(tensor: jnp.ndarray, network: 'PhotonicNetwork',
                            max_rank: int) -> Dict[str, jnp.ndarray]:
     """Quantum-enhanced CP (CANDECOMP/PARAFAC) decomposition."""
     # Simplified CP decomposition implementation
@@ -524,7 +526,7 @@ def quantum_cp_decomposition(tensor: jnp.ndarray, network: PhotonicNetwork,
     }
 
 
-def quantum_tucker_decomposition(tensor: jnp.ndarray, network: PhotonicNetwork,
+def quantum_tucker_decomposition(tensor: jnp.ndarray, network: 'PhotonicNetwork',
                                max_rank: int) -> Dict[str, jnp.ndarray]:
     """Quantum-enhanced Tucker decomposition."""
     # Simplified Tucker decomposition

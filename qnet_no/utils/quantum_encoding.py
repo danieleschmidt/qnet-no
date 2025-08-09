@@ -1,13 +1,15 @@
 """Quantum encoding schemes for classical data."""
 
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 import jax
 import jax.numpy as jnp
 import numpy as np
-from ..networks.photonic_network import PhotonicNetwork
+
+if TYPE_CHECKING:
+    from ..networks.photonic_network import PhotonicNetwork
 
 
-def quantum_feature_map(data: jnp.ndarray, network: PhotonicNetwork,
+def quantum_feature_map(data: jnp.ndarray, network: 'PhotonicNetwork',
                        schmidt_rank: int, encoding_type: str = "amplitude") -> jnp.ndarray:
     """
     Encode classical data into quantum feature space using distributed QPUs.
@@ -31,7 +33,7 @@ def quantum_feature_map(data: jnp.ndarray, network: PhotonicNetwork,
         raise ValueError(f"Unknown encoding type: {encoding_type}")
 
 
-def amplitude_encoding(data: jnp.ndarray, network: PhotonicNetwork,
+def amplitude_encoding(data: jnp.ndarray, network: 'PhotonicNetwork',
                       schmidt_rank: int) -> jnp.ndarray:
     """
     Amplitude encoding: encode data as probability amplitudes.
@@ -63,7 +65,7 @@ def amplitude_encoding(data: jnp.ndarray, network: PhotonicNetwork,
     return quantum_enhanced
 
 
-def angle_encoding(data: jnp.ndarray, network: PhotonicNetwork,
+def angle_encoding(data: jnp.ndarray, network: 'PhotonicNetwork',
                   schmidt_rank: int) -> jnp.ndarray:
     """
     Angle encoding: encode data as rotation angles in quantum gates.
@@ -100,7 +102,7 @@ def angle_encoding(data: jnp.ndarray, network: PhotonicNetwork,
         return data_scaled
 
 
-def basis_encoding(data: jnp.ndarray, network: PhotonicNetwork,
+def basis_encoding(data: jnp.ndarray, network: 'PhotonicNetwork',
                   schmidt_rank: int) -> jnp.ndarray:
     """
     Basis encoding: encode data in computational basis states.
@@ -195,7 +197,7 @@ def distribute_features_across_nodes(n_features: int, n_nodes: int) -> dict:
     return feature_assignments
 
 
-def apply_distributed_amplitude_encoding(data: jnp.ndarray, network: PhotonicNetwork,
+def apply_distributed_amplitude_encoding(data: jnp.ndarray, network: 'PhotonicNetwork',
                                        schmidt_rank: int, n_qubits: int) -> jnp.ndarray:
     """Apply amplitude encoding using distributed quantum processing."""
     n_nodes = len(network.quantum_nodes)
@@ -313,7 +315,7 @@ def create_basis_states(feature_values: jnp.ndarray, n_bins: int) -> jnp.ndarray
     return basis_states
 
 
-def quantum_variational_encoding(data: jnp.ndarray, network: PhotonicNetwork,
+def quantum_variational_encoding(data: jnp.ndarray, network: 'PhotonicNetwork',
                                 schmidt_rank: int, n_layers: int = 3) -> jnp.ndarray:
     """
     Variational quantum encoding using parameterized quantum circuits.
@@ -344,7 +346,7 @@ def quantum_variational_encoding(data: jnp.ndarray, network: PhotonicNetwork,
     return encoded_features
 
 
-def apply_entangling_layer(angles: jnp.ndarray, network: PhotonicNetwork,
+def apply_entangling_layer(angles: jnp.ndarray, network: 'PhotonicNetwork',
                           schmidt_rank: int) -> jnp.ndarray:
     """Apply entangling operations across quantum network."""
     batch_size, n_features = angles.shape
