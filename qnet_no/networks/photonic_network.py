@@ -4,7 +4,7 @@ from typing import Dict, List, Tuple, Optional, Any
 import numpy as np
 import networkx as nx
 from dataclasses import dataclass
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 import jax.numpy as jnp
 import logging
 from ..utils.validation import validate_network_parameters, log_validation_result
@@ -44,6 +44,8 @@ class PhotonicNetwork(BaseModel):
     across distributed quantum processing units connected via quantum channels.
     """
     
+    model_config = {"extra": "allow", "arbitrary_types_allowed": True}  # Allow dynamic attributes and arbitrary types
+    
     nodes: int = Field(default=4, ge=1, le=1024)
     entanglement_protocol: str = Field(default="nv_center", pattern="^(nv_center|photonic|ion_trap)$")
     fidelity_threshold: float = Field(default=0.85, ge=0.0, le=1.0)
@@ -53,7 +55,8 @@ class PhotonicNetwork(BaseModel):
         super().__init__(**data)
         self._validate_and_initialize()
     
-    @validator('nodes')
+    @field_validator('nodes')
+    @classmethod
     def validate_nodes(cls, v):
         if not isinstance(v, int) or v < 1:
             raise ValueError(f"nodes must be a positive integer, got {v}")
@@ -61,7 +64,8 @@ class PhotonicNetwork(BaseModel):
             raise ValueError(f"nodes cannot exceed 1024, got {v}")
         return v
     
-    @validator('fidelity_threshold')
+    @field_validator('fidelity_threshold')
+    @classmethod
     def validate_fidelity(cls, v):
         if not 0 <= v <= 1:
             raise ValueError(f"fidelity_threshold must be in [0,1], got {v}")
@@ -348,5 +352,3 @@ class PhotonicNetwork(BaseModel):
         except ImportError:
             print("Matplotlib not available for network visualization")
     
-    class Config:
-        arbitrary_types_allowed = True

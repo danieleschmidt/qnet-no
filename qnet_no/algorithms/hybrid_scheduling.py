@@ -56,7 +56,6 @@ class QuantumSchedulingDevice:
         self.device = qml.device(backend, wires=n_qubits)
         self.circuit_fidelity = 0.98  # Estimated based on device characteristics
         
-    @qml.qnode(device=None)  # Will be bound dynamically
     def qaoa_circuit(self, params: np.ndarray, cost_h: np.ndarray, mixer_h: np.ndarray) -> float:
         """QAOA circuit for optimization problems."""
         n_wires = cost_h.shape[0]

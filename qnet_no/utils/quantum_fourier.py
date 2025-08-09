@@ -1,13 +1,15 @@
 """Quantum Fourier transform operations for distributed quantum processing."""
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 import jax
 import jax.numpy as jnp
 import numpy as np
-from ..networks.photonic_network import PhotonicNetwork
+
+if TYPE_CHECKING:
+    from ..networks.photonic_network import PhotonicNetwork
 
 
-def quantum_fourier_modes(x: jnp.ndarray, modes: int, network: PhotonicNetwork,
+def quantum_fourier_modes(x: jnp.ndarray, modes: int, network: 'PhotonicNetwork',
                          schmidt_rank: int, inverse: bool = False) -> jnp.ndarray:
     """
     Quantum Fourier transform using distributed quantum processing.
@@ -73,7 +75,7 @@ def quantum_fourier_modes(x: jnp.ndarray, modes: int, network: PhotonicNetwork,
     return x_quantum_enhanced
 
 
-def apply_quantum_fourier_enhancement(x_fft: jnp.ndarray, network: PhotonicNetwork,
+def apply_quantum_fourier_enhancement(x_fft: jnp.ndarray, network: 'PhotonicNetwork',
                                     schmidt_rank: int, inverse: bool = False) -> jnp.ndarray:
     """
     Apply quantum enhancement to Fourier modes using distributed QPUs.
@@ -291,7 +293,7 @@ def insert_mode_slice(result: jnp.ndarray, enhanced_data: jnp.ndarray,
 
 
 def inverse_quantum_fourier_transform(x_fft: jnp.ndarray, original_shape: tuple,
-                                    network: PhotonicNetwork, schmidt_rank: int) -> jnp.ndarray:
+                                    network: 'PhotonicNetwork', schmidt_rank: int) -> jnp.ndarray:
     """
     Compute inverse quantum Fourier transform to recover spatial domain.
     

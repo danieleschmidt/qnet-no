@@ -22,7 +22,7 @@ from ..utils.error_handling import (
 )
 from ..utils.performance import (
     MemoryPool, ComputationCache, PerformanceProfiler, 
-    AdaptiveBatchSizer
+    AdaptiveBatchSize
 )
 from ..utils.distributed import (
     DistributedQuantumOperator, TaskScheduler, LoadBalancer, 
@@ -112,7 +112,7 @@ class QuantumFourierNeuralOperator(nn.Module, DistributedQuantumOperator):
             compression=True
         )
         self.profiler = PerformanceProfiler()
-        self.batch_sizer = AdaptiveBatchSizer(
+        self.batch_sizer = AdaptiveBatchSize(
             initial_batch_size=32,
             min_batch_size=8,
             max_batch_size=256,
