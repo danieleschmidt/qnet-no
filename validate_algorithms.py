@@ -65,13 +65,12 @@ def validate_network_creation():
                 node_id=i,
                 n_qubits=8,
                 fidelity=0.9,
-                capabilities=["two_qubit_gates", "readout"],
-                memory_gb=4.0
+                capabilities=["two_qubit_gates", "readout"]
             )
         
         # Add entanglement links
         network.add_entanglement_link(
-            node1=0, node2=1,
+            source_id=0, target_id=1,
             fidelity=0.85,
             schmidt_rank=8
         )

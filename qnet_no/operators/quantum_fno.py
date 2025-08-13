@@ -105,7 +105,7 @@ class QuantumFourierNeuralOperator(nn.Module, DistributedQuantumOperator):
         self.fc_out2 = nn.Dense(1)
         
         # Initialize performance optimization components
-        self.memory_pool = MemoryPool(max_pool_size=500 * 1024 * 1024, cleanup_threshold=0.8)
+        self.memory_pool = MemoryPool(max_size_mb=500)
         self.computation_cache = ComputationCache(
             max_memory_gb=2.0, 
             cache_dir="./cache/qfno",

@@ -567,8 +567,7 @@ class QuantumTransformerOperator(nn.Module):
         # Output projection for function values
         self.output_projection = nn.Dense(1)  # Single output for function values
     
-    @error_boundary(operation_name="quantum_transformer_forward", 
-                   severity=ErrorSeverity.HIGH)
+    @error_boundary(OperatorError, severity=ErrorSeverity.HIGH)
     def __call__(self, 
                  x: jnp.ndarray, 
                  network: PhotonicNetwork,
@@ -652,7 +651,7 @@ class QuantumTransformerOperator(nn.Module):
         
         return float(enhancement)
     
-    @error_boundary(operation_name="quantum_transformer_training", 
+    @error_boundary(TrainingError, 
                    severity=ErrorSeverity.CRITICAL)
     def fit(self, 
            train_data: Dict[str, jnp.ndarray],

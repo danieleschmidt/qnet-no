@@ -854,6 +854,24 @@ class HybridQuantumClassicalScheduler:
         
         return metrics
     
+    def cleanup_resources(self) -> None:
+        """Clean up resources and reset internal state."""
+        logger.info("Cleaning up scheduler resources")
+        
+        # Clear history data to free memory
+        self.scheduling_history.clear()
+        self.quantum_advantage_scores.clear()
+        self.current_performance.clear()
+        
+        # Reset components
+        if hasattr(self.schmidt_optimizer, 'cleanup'):
+            self.schmidt_optimizer.cleanup()
+        
+        if hasattr(self.quantum_optimizer, 'cleanup'):
+            self.quantum_optimizer.cleanup()
+        
+        logger.info("Scheduler cleanup completed")
+    
     def export_research_data(self) -> Dict[str, Any]:
         """Export comprehensive data for research analysis and publication."""
         return {

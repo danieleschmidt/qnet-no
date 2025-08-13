@@ -597,3 +597,175 @@ def quantum_enhance_core_tensor(core: jnp.ndarray, quantum_node: Dict[str, Any])
     enhancement_factor = 1 + 0.1 * node_fidelity
     
     return core * enhancement_factor
+
+
+def schmidt_decomposition(tensor: jnp.ndarray, bipartition_dim: int, 
+                         max_rank: Optional[int] = None) -> Dict[str, jnp.ndarray]:
+    """
+    Perform Schmidt decomposition of a quantum state tensor.
+    
+    The Schmidt decomposition is fundamental to quantum entanglement theory,
+    expressing a bipartite quantum state as a sum of product states.
+    
+    Args:
+        tensor: Input quantum state tensor
+        bipartition_dim: Dimension at which to perform bipartition  
+        max_rank: Maximum Schmidt rank to keep (truncates if None)
+        
+    Returns:
+        Dictionary containing Schmidt coefficients and basis vectors
+    """
+    original_shape = tensor.shape
+    
+    # Reshape tensor for bipartition
+    left_dim = int(np.prod(original_shape[:bipartition_dim]))
+    right_dim = int(np.prod(original_shape[bipartition_dim:]))
+    
+    # Reshape to matrix form
+    matrix = tensor.reshape(left_dim, right_dim)
+    
+    # Perform SVD to get Schmidt decomposition
+    U, S, Vh = jnp.linalg.svd(matrix, full_matrices=False)
+    
+    # Schmidt coefficients (singular values)
+    schmidt_coefficients = S
+    
+    # Schmidt vectors for left and right subsystems
+    left_schmidt_vectors = U  # Shape: (left_dim, schmidt_rank)
+    right_schmidt_vectors = Vh.T  # Shape: (right_dim, schmidt_rank)
+    
+    # Truncate to maximum rank if specified
+    if max_rank is not None and len(schmidt_coefficients) > max_rank:
+        schmidt_coefficients = schmidt_coefficients[:max_rank]
+        left_schmidt_vectors = left_schmidt_vectors[:, :max_rank]
+        right_schmidt_vectors = right_schmidt_vectors[:, :max_rank]
+    
+    # Calculate Schmidt rank (number of non-zero coefficients)
+    schmidt_rank = jnp.sum(schmidt_coefficients > 1e-12)
+    
+    # Calculate entanglement entropy (von Neumann entropy)
+    # S = -Tr(ρ_A log ρ_A) where ρ_A is reduced density matrix
+    schmidt_coeffs_normalized = schmidt_coefficients**2
+    schmidt_coeffs_normalized = schmidt_coeffs_normalized / jnp.sum(schmidt_coeffs_normalized)
+    
+    # Avoid log(0) by adding small epsilon
+    eps = 1e-16
+    log_coeffs = jnp.log(schmidt_coeffs_normalized + eps)
+    entanglement_entropy = -jnp.sum(schmidt_coeffs_normalized * log_coeffs)
+    
+    return {
+        'schmidt_coefficients': schmidt_coefficients,
+        'left_schmidt_vectors': left_schmidt_vectors,
+        'right_schmidt_vectors': right_schmidt_vectors,
+        'schmidt_rank': int(schmidt_rank),
+        'entanglement_entropy': float(entanglement_entropy),
+        'original_shape': original_shape,
+        'bipartition_dim': bipartition_dim
+    }
+
+
+def quantum_schmidt_decomposition(tensor: jnp.ndarray, network: 'PhotonicNetwork',
+                                 bipartition_dim: int = None,
+                                 max_rank: Optional[int] = None) -> Dict[str, jnp.ndarray]:
+    """
+    Quantum-enhanced Schmidt decomposition using distributed quantum processing.
+    
+    Leverages quantum network topology to perform efficient Schmidt decomposition
+    across distributed quantum nodes, enabling analysis of large quantum states.
+    
+    Args:
+        tensor: Input quantum state tensor
+        network: Quantum photonic network for distributed processing
+        bipartition_dim: Dimension for bipartition (auto-detect if None)
+        max_rank: Maximum Schmidt rank to keep
+        
+    Returns:
+        Enhanced Schmidt decomposition with quantum network analysis
+    """
+    original_shape = tensor.shape
+    
+    # Auto-detect bipartition dimension if not specified
+    if bipartition_dim is None:
+        # Choose middle dimension for bipartition
+        bipartition_dim = len(original_shape) // 2
+    
+    # Perform standard Schmidt decomposition
+    schmidt_result = schmidt_decomposition(tensor, bipartition_dim, max_rank)
+    
+    # Enhance with quantum network analysis
+    if len(network.quantum_nodes) > 0:
+        # Analyze entanglement structure across network
+        network_entanglement_analysis = analyze_network_entanglement(
+            schmidt_result, network
+        )
+        schmidt_result.update(network_entanglement_analysis)
+    
+    return schmidt_result
+
+
+def analyze_network_entanglement(schmidt_result: Dict[str, Any],
+                                network: 'PhotonicNetwork') -> Dict[str, Any]:
+    """
+    Analyze entanglement structure in relation to quantum network topology.
+    
+    Provides insights into how quantum entanglement in the state relates
+    to the physical entanglement links in the quantum network.
+    """
+    schmidt_coefficients = schmidt_result['schmidt_coefficients']
+    schmidt_rank = schmidt_result['schmidt_rank']
+    entanglement_entropy = schmidt_result['entanglement_entropy']
+    
+    # Analyze network capacity for supporting this entanglement
+    network_stats = network.get_network_stats()
+    total_qubits = network_stats['total_qubits']
+    avg_link_fidelity = network_stats['avg_link_fidelity']
+    
+    # Calculate network entanglement capacity
+    max_network_schmidt_rank = 2**(total_qubits // 2)  # Theoretical maximum
+    practical_schmidt_rank = int(max_network_schmidt_rank * avg_link_fidelity)
+    
+    # Determine if network can support the required entanglement
+    is_network_sufficient = schmidt_rank <= practical_schmidt_rank
+    
+    # Calculate entanglement distribution efficiency
+    if len(network.quantum_nodes) > 1:
+        # Analyze how well entanglement can be distributed
+        entanglement_links = list(network.entanglement_links.values())
+        avg_schmidt_rank_links = jnp.mean([link.schmidt_rank for link in entanglement_links])
+        
+        distribution_efficiency = min(1.0, avg_schmidt_rank_links / max(1, schmidt_rank))
+    else:
+        distribution_efficiency = 1.0
+    
+    # Generate recommendations for optimal network configuration
+    recommendations = []
+    
+    if not is_network_sufficient:
+        recommendations.append("Increase network size or improve link fidelities")
+    
+    if distribution_efficiency < 0.8:
+        recommendations.append("Optimize entanglement distribution protocols")
+        
+    if entanglement_entropy > 2.0:  # High entanglement
+        recommendations.append("Consider specialized high-entanglement protocols")
+    
+    return {
+        'network_schmidt_capacity': practical_schmidt_rank,
+        'is_network_sufficient': is_network_sufficient,
+        'distribution_efficiency': float(distribution_efficiency),
+        'entanglement_classification': classify_entanglement_level(entanglement_entropy),
+        'optimization_recommendations': recommendations,
+        'network_utilization': float(schmidt_rank / max(1, practical_schmidt_rank))
+    }
+
+
+def classify_entanglement_level(entanglement_entropy: float) -> str:
+    """Classify the level of entanglement based on entropy."""
+    if entanglement_entropy < 0.5:
+        return "low_entanglement"
+    elif entanglement_entropy < 1.5:
+        return "moderate_entanglement"
+    elif entanglement_entropy < 3.0:
+        return "high_entanglement"
+    else:
+        return "maximal_entanglement"
