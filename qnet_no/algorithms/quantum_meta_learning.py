@@ -197,7 +197,7 @@ class QuantumAlgorithmEvaluator:
         self.evaluation_cache = {}
         self.performance_history = []
     
-    @error_boundary(operation_name="algorithm_evaluation", severity=ErrorSeverity.HIGH)
+    @error_boundary(OperatorError, severity=ErrorSeverity.HIGH)
     def evaluate_algorithm(self, 
                           genome: QuantumAlgorithmGenome,
                           task: MetaLearningTask,
@@ -673,7 +673,7 @@ class QuantumMetaLearner:
         self.meta_learning_history = []
         self.transfer_learning_matrix = {}
     
-    @error_boundary(operation_name="quantum_meta_learning", severity=ErrorSeverity.CRITICAL)
+    @error_boundary(OperatorError, severity=ErrorSeverity.CRITICAL)
     def discover_algorithms(self, 
                            tasks: List[MetaLearningTask],
                            datasets: Dict[str, Dict[str, jnp.ndarray]],

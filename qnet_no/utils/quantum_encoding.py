@@ -9,6 +9,26 @@ if TYPE_CHECKING:
     from ..networks.photonic_network import PhotonicNetwork
 
 
+def quantum_state_preparation(data: jnp.ndarray, network: 'PhotonicNetwork',
+                             schmidt_rank: int = 8) -> jnp.ndarray:
+    """
+    Prepare quantum states from classical data for quantum machine learning.
+    
+    This function creates quantum state representations suitable for 
+    quantum neural networks and quantum algorithms.
+    
+    Args:
+        data: Classical data to encode [batch, features]
+        network: Quantum photonic network
+        schmidt_rank: Schmidt rank for entanglement
+        
+    Returns:
+        Quantum state representations [batch, quantum_features]
+    """
+    # Use amplitude encoding as the default state preparation method
+    return amplitude_encoding(data, network, schmidt_rank)
+
+
 def quantum_feature_map(data: jnp.ndarray, network: 'PhotonicNetwork',
                        schmidt_rank: int, encoding_type: str = "amplitude") -> jnp.ndarray:
     """
@@ -313,6 +333,115 @@ def create_basis_states(feature_values: jnp.ndarray, n_bins: int) -> jnp.ndarray
         basis_states = basis_states.at[i, bin_idx].set(1.0)
     
     return basis_states
+
+
+def quantum_position_encoding(sequence_length: int, d_model: int, 
+                             network: 'PhotonicNetwork', 
+                             schmidt_rank: int = 8) -> jnp.ndarray:
+    """
+    Quantum positional encoding for transformer architectures.
+    
+    Uses quantum phase encoding to create positional embeddings that leverage
+    quantum superposition for enhanced sequence representation.
+    
+    Args:
+        sequence_length: Maximum sequence length
+        d_model: Model dimensionality
+        network: Quantum photonic network
+        schmidt_rank: Schmidt rank for entanglement
+        
+    Returns:
+        Positional encodings [sequence_length, d_model]
+    """
+    # Create classical positional encodings as baseline
+    position = jnp.arange(sequence_length)[:, jnp.newaxis]
+    div_term = jnp.exp(jnp.arange(0, d_model, 2) * 
+                       -(jnp.log(10000.0) / d_model))
+    
+    # Classical sine/cosine positional encoding
+    pe = jnp.zeros((sequence_length, d_model))
+    pe = pe.at[:, 0::2].set(jnp.sin(position * div_term))
+    pe = pe.at[:, 1::2].set(jnp.cos(position * div_term))
+    
+    # Apply quantum enhancement if network has quantum nodes
+    if hasattr(network, 'quantum_nodes') and len(network.quantum_nodes) > 0:
+        # Enhance with quantum phase encoding
+        quantum_enhanced_pe = apply_quantum_phase_encoding(
+            pe, network, schmidt_rank
+        )
+        return quantum_enhanced_pe
+    else:
+        return pe
+
+
+def apply_quantum_phase_encoding(pe: jnp.ndarray, network: 'PhotonicNetwork',
+                                schmidt_rank: int) -> jnp.ndarray:
+    """Apply quantum phase encoding to positional embeddings."""
+    sequence_length, d_model = pe.shape
+    
+    # Create quantum phase modulations
+    n_nodes = len(network.quantum_nodes) if hasattr(network, 'quantum_nodes') else 1
+    
+    # Distribute positional encoding across quantum nodes
+    features_per_node = d_model // n_nodes
+    enhanced_components = []
+    
+    for node_idx in range(n_nodes):
+        start_dim = node_idx * features_per_node
+        end_dim = min((node_idx + 1) * features_per_node, d_model)
+        
+        if start_dim < end_dim:
+            node_pe = pe[:, start_dim:end_dim]
+            
+            # Apply quantum phase enhancement
+            quantum_phases = create_quantum_phases(node_pe, schmidt_rank)
+            enhanced_pe = node_pe * jnp.exp(1j * quantum_phases)
+            
+            # Extract real and imaginary components
+            enhanced_real = jnp.real(enhanced_pe)
+            enhanced_imag = jnp.imag(enhanced_pe)
+            
+            # Combine real and imaginary parts
+            if end_dim - start_dim > 1:
+                combined_enhanced = jnp.concatenate([enhanced_real, enhanced_imag], axis=1)
+                # Truncate to original size if needed
+                combined_enhanced = combined_enhanced[:, :end_dim-start_dim]
+            else:
+                combined_enhanced = enhanced_real
+            
+            enhanced_components.append(combined_enhanced)
+    
+    # Combine all enhanced components
+    if enhanced_components:
+        quantum_pe = jnp.concatenate(enhanced_components, axis=1)
+        # Ensure correct output shape
+        if quantum_pe.shape[1] != d_model:
+            quantum_pe = quantum_pe[:, :d_model]  # Truncate if too long
+            if quantum_pe.shape[1] < d_model:  # Pad if too short
+                padding = jnp.zeros((sequence_length, d_model - quantum_pe.shape[1]))
+                quantum_pe = jnp.concatenate([quantum_pe, padding], axis=1)
+        return quantum_pe
+    else:
+        return pe
+
+
+def create_quantum_phases(pe: jnp.ndarray, schmidt_rank: int) -> jnp.ndarray:
+    """Create quantum phases based on Schmidt rank and positional encoding."""
+    # Create entanglement-inspired phase patterns
+    phase_strength = schmidt_rank / 32.0  # Normalize by max Schmidt rank
+    
+    # Generate quantum phase patterns
+    quantum_phases = phase_strength * jnp.sin(2 * jnp.pi * pe)
+    
+    # Add cross-positional quantum correlations
+    if pe.shape[1] > 1:
+        cross_terms = jnp.outer(jnp.mean(pe, axis=1), jnp.mean(pe, axis=0))
+        phase_modulation = 0.1 * phase_strength * jnp.sin(cross_terms)
+        
+        # Apply phase modulation
+        quantum_phases = quantum_phases + phase_modulation
+    
+    return quantum_phases
 
 
 def quantum_variational_encoding(data: jnp.ndarray, network: 'PhotonicNetwork',

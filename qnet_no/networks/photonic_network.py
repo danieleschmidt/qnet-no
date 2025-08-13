@@ -22,6 +22,7 @@ class QuantumNode:
     fidelity: float
     connectivity: List[int]  # Connected node IDs
     capabilities: List[str]  # Supported operations
+    memory_gb: float = 4.0  # Default memory in GB
     
     
 @dataclass  
@@ -298,6 +299,129 @@ class PhotonicNetwork(BaseModel):
             "protocols": list(set(link.protocol for link in self.entanglement_links.values())),
         }
     
+    def add_quantum_node(self, node_id: int, qpu_type: str = "photonic", 
+                        n_qubits: int = 8, fidelity: float = 0.9, 
+                        capabilities: Optional[List[str]] = None) -> None:
+        """
+        Add a new quantum node to the network dynamically.
+        
+        Args:
+            node_id: Unique identifier for the node
+            qpu_type: Type of quantum processing unit
+            n_qubits: Number of qubits available
+            fidelity: Node fidelity (0-1)
+            capabilities: List of supported quantum operations
+        """
+        if capabilities is None:
+            capabilities = ["rx", "ry", "rz", "cnot", "measure"]
+            
+        if node_id in self.quantum_nodes:
+            logger.warning(f"Node {node_id} already exists, updating...")
+        
+        # Create quantum node
+        quantum_node = QuantumNode(
+            node_id=node_id,
+            qpu_type=qpu_type,
+            n_qubits=n_qubits,
+            fidelity=fidelity,
+            connectivity=[],  # Will be populated when links are created
+            capabilities=capabilities
+        )
+        
+        # Add to network structures
+        self.quantum_nodes[node_id] = quantum_node
+        self.graph.add_node(node_id)
+        
+        # Update entanglement map
+        if hasattr(self, 'entanglement_map'):
+            self.entanglement_map[node_id] = {}
+        
+        logger.info(f"Added quantum node {node_id}: {qpu_type} with {n_qubits} qubits")
+    
+    def remove_quantum_node(self, node_id: int) -> bool:
+        """
+        Remove a quantum node from the network.
+        
+        Args:
+            node_id: Node to remove
+            
+        Returns:
+            True if node was removed, False if not found
+        """
+        if node_id not in self.quantum_nodes:
+            return False
+            
+        # Remove from all network structures
+        del self.quantum_nodes[node_id]
+        self.graph.remove_node(node_id)
+        
+        # Remove entanglement links
+        if hasattr(self, 'entanglement_links'):
+            links_to_remove = [(src, tgt) for (src, tgt) in self.entanglement_links.keys() 
+                              if src == node_id or tgt == node_id]
+            
+            for link in links_to_remove:
+                del self.entanglement_links[link]
+        
+        # Remove from entanglement map
+        if hasattr(self, 'entanglement_map') and node_id in self.entanglement_map:
+            del self.entanglement_map[node_id]
+            # Remove references from other nodes
+            for other_node_map in self.entanglement_map.values():
+                if node_id in other_node_map:
+                    del other_node_map[node_id]
+        
+        logger.info(f"Removed quantum node {node_id}")
+        return True
+    
+    def add_entanglement_link(self, source_id: int, target_id: int, 
+                             fidelity: float, schmidt_rank: int,
+                             protocol: Optional[str] = None) -> None:
+        """
+        Add an entanglement link between two nodes.
+        
+        Args:
+            source_id: Source node ID
+            target_id: Target node ID  
+            fidelity: Link fidelity
+            schmidt_rank: Schmidt rank of entanglement
+            protocol: Entanglement protocol to use
+        """
+        if protocol is None:
+            protocol = self.entanglement_protocol
+            
+        # Create entanglement link
+        link = EntanglementLink(
+            source_id=source_id,
+            target_id=target_id,
+            fidelity=fidelity,
+            schmidt_rank=schmidt_rank,
+            coherence_time=100.0,  # Default
+            entanglement_rate=1e6,  # Default
+            protocol=protocol
+        )
+        
+        # Add to network structures
+        self.entanglement_links[(source_id, target_id)] = link
+        self.entanglement_links[(target_id, source_id)] = link  # Bidirectional
+        
+        # Update graph
+        if not self.graph.has_edge(source_id, target_id):
+            self.graph.add_edge(source_id, target_id)
+        
+        # Update entanglement map
+        if hasattr(self, 'entanglement_map'):
+            self.entanglement_map[source_id][target_id] = link
+            self.entanglement_map[target_id][source_id] = link
+            
+        # Update node connectivity
+        if source_id in self.quantum_nodes and target_id not in self.quantum_nodes[source_id].connectivity:
+            self.quantum_nodes[source_id].connectivity.append(target_id)
+        if target_id in self.quantum_nodes and source_id not in self.quantum_nodes[target_id].connectivity:
+            self.quantum_nodes[target_id].connectivity.append(source_id)
+        
+        logger.info(f"Added entanglement link: {source_id} <-> {target_id} (fidelity={fidelity:.3f})")
+
     def visualize_network(self) -> None:
         """Create visualization of quantum network topology."""
         try:
