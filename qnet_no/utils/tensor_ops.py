@@ -198,11 +198,11 @@ def extract_node_operands(operands: tuple, distribution_dim: str,
     return tuple(node_operands)
 
 
-def quantum_node_einsum(equation: str, operands: tuple, quantum_node: Dict[str, Any]) -> jnp.ndarray:
+def quantum_node_einsum(equation: str, operands: tuple, quantum_node) -> jnp.ndarray:
     """Perform einsum computation at individual quantum node with enhancement."""
     # Apply quantum enhancement based on node properties
-    node_fidelity = quantum_node.get("fidelity", 0.9)
-    qpu_type = quantum_node.get("qpu_type", "photonic")
+    node_fidelity = quantum_node.fidelity if hasattr(quantum_node, 'fidelity') else 0.9
+    qpu_type = quantum_node.qpu_type if hasattr(quantum_node, 'qpu_type') else "photonic"
     
     # Standard einsum computation
     result = jnp.einsum(equation, *operands)

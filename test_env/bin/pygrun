@@ -1,4 +1,4 @@
-#!/root/repo/test_env/bin/python
+#!/root/repo/test_env/bin/python3
 __author__ = 'jszheng'
 import optparse
 import sys

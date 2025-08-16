@@ -34,9 +34,9 @@ def quantum_fourier_modes(x: jnp.ndarray, modes: int, network: 'PhotonicNetwork'
     if len(spatial_dims) == 1:
         x_fft = jnp.fft.fft(x, axis=1)
     elif len(spatial_dims) == 2:
-        x_fft = jnp.fft.fft2(x, axis=(1, 2))
+        x_fft = jnp.fft.fft2(x, axes=(1, 2))
     elif len(spatial_dims) == 3:
-        x_fft = jnp.fft.fftn(x, axis=(1, 2, 3))
+        x_fft = jnp.fft.fftn(x, axes=(1, 2, 3))
     else:
         raise ValueError(f"Unsupported spatial dimensions: {len(spatial_dims)}")
     
@@ -163,7 +163,7 @@ def extract_mode_slice(x_fft: jnp.ndarray, mode_slice: tuple) -> jnp.ndarray:
         return flattened[:, start_mode:end_mode, :]
 
 
-def quantum_node_processing(data: jnp.ndarray, quantum_node: dict, 
+def quantum_node_processing(data: jnp.ndarray, quantum_node, 
                           schmidt_rank: int, inverse: bool = False) -> jnp.ndarray:
     """
     Apply quantum processing at individual node.
@@ -171,8 +171,8 @@ def quantum_node_processing(data: jnp.ndarray, quantum_node: dict,
     Simulates quantum advantage through enhanced computation on QPU.
     """
     # Get node properties
-    node_fidelity = quantum_node.get("fidelity", 0.9)
-    qpu_type = quantum_node.get("qpu_type", "photonic")
+    node_fidelity = quantum_node.fidelity if hasattr(quantum_node, 'fidelity') else 0.9
+    qpu_type = quantum_node.qpu_type if hasattr(quantum_node, 'qpu_type') else "photonic"
     
     # Apply quantum enhancement based on node type
     if qpu_type == "photonic":
@@ -249,7 +249,8 @@ def nv_center_fourier_enhancement(data: jnp.ndarray, schmidt_rank: int,
     enhanced = data * thermal_factor * optical_coupling
     
     # Add optical interface effects
-    optical_phase = 0.1 * (1 - fidelity) * jnp.random.uniform(0, 2*jnp.pi, data.shape)
+    rng = jax.random.PRNGKey(42)
+    optical_phase = 0.1 * (1 - fidelity) * jax.random.uniform(rng, data.shape, minval=0, maxval=2*jnp.pi)
     enhanced *= jnp.exp(1j * optical_phase)
     
     return enhanced

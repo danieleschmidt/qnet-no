@@ -80,7 +80,8 @@ class MemoryPool:
 class ComputationCache:
     """Cache for expensive quantum computations."""
     
-    def __init__(self, max_size: int = 1000, cache_dir: Optional[Path] = None):
+    def __init__(self, max_size: int = 1000, cache_dir: Optional[Path] = None, 
+                 max_memory_gb: Optional[float] = None, compression: bool = True):
         self.max_size = max_size
         self.cache_dir = cache_dir
         self.memory_cache: Dict[str, Any] = {}
@@ -88,6 +89,8 @@ class ComputationCache:
         self.lock = threading.Lock()
         
         if cache_dir:
+            if isinstance(cache_dir, str):
+                cache_dir = Path(cache_dir)
             cache_dir.mkdir(parents=True, exist_ok=True)
     
     def _compute_key(self, *args, **kwargs) -> str:
