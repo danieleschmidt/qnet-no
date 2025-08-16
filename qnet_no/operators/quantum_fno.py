@@ -111,13 +111,7 @@ class QuantumFourierNeuralOperator(nn.Module, DistributedQuantumOperator):
             cache_dir="./cache/qfno",
             compression=True
         )
-        self.profiler = PerformanceProfiler()
-        self.batch_sizer = AdaptiveBatchSize(
-            initial_batch_size=32,
-            min_batch_size=8,
-            max_batch_size=256,
-            target_memory_gb=4.0
-        )
+        # Note: Simplified for Generation 1 - full performance components in Generation 3
         
         # Distributed computing components (initialized when needed)
         self.scheduler = None
@@ -137,51 +131,52 @@ class QuantumFourierNeuralOperator(nn.Module, DistributedQuantumOperator):
             circuit_depth=self.n_layers
         )
         
-        # Start profiling
-        with self.profiler.profile_context("qfno_forward"):
-            # Check cache for computed results
-            cache_key = None
-            if use_cache:
-                cache_key = self.computation_cache.generate_cache_key(
-                    "qfno_forward", x.shape, self.modes, self.schmidt_rank
-                )
-                cached_result = self.computation_cache.get(cache_key)
-                if cached_result is not None:
-                    logger.debug(f"Cache hit for forward pass: {cache_key}")
-                    return cached_result
+        # Simplified for Generation 1 - full profiling in Generation 3
+        # with self.profiler.profile_context("qfno_forward"):
+        
+        # Check cache for computed results
+        cache_key = None
+        if use_cache:
+            cache_key = self.computation_cache.generate_cache_key(
+                "qfno_forward", x.shape, self.modes, self.schmidt_rank
+            )
+            cached_result = self.computation_cache.get(cache_key)
+            if cached_result is not None:
+                logger.debug(f"Cache hit for forward pass: {cache_key}")
+                return cached_result
+        
+        # Get tensors from memory pool for intermediate computations
+        x_tensor = self.memory_pool.get_tensor(x.shape, x.dtype)
+        x_tensor = x_tensor.at[:].set(x)
+        
+        try:
+            # Input layer
+            x_tensor = self.fc_in(x_tensor)
             
-            # Get tensors from memory pool for intermediate computations
-            x_tensor = self.memory_pool.get_tensor(x.shape, x.dtype)
-            x_tensor = x_tensor.at[:].set(x)
-            
-            try:
-                # Input layer
-                x_tensor = self.fc_in(x_tensor)
+            # Main layers with optional distributed processing
+            for i, (conv_layer, w_layer) in enumerate(zip(self.conv_layers, self.w_layers)):
+                if use_distributed and self.distributed_enabled and x_tensor.size > 1024*1024:
+                    # Use distributed computation for large tensors
+                    x1 = self._distributed_conv_layer(x_tensor, conv_layer, network, i)
+                else:
+                    x1 = conv_layer(x_tensor, network)
                 
-                # Main layers with optional distributed processing
-                for i, (conv_layer, w_layer) in enumerate(zip(self.conv_layers, self.w_layers)):
-                    if use_distributed and self.distributed_enabled and x_tensor.size > 1024*1024:
-                        # Use distributed computation for large tensors
-                        x1 = self._distributed_conv_layer(x_tensor, conv_layer, network, i)
-                    else:
-                        x1 = conv_layer(x_tensor, network)
-                    
-                    x2 = w_layer(x_tensor)
-                    x_tensor = nn.gelu(x1 + x2)
+                x2 = w_layer(x_tensor)
+                x_tensor = nn.gelu(x1 + x2)
                 
                 # Output layers
                 x_tensor = nn.gelu(self.fc_out1(x_tensor))
                 result = self.fc_out2(x_tensor)
                 
-                # Cache result if enabled
-                if use_cache and cache_key:
-                    self.computation_cache.put(cache_key, result)
-                
-                return result
-                
-            finally:
-                # Return tensor to memory pool
-                self.memory_pool.return_tensor(x_tensor)
+            # Cache result if enabled
+            if use_cache and cache_key:
+                self.computation_cache.put(cache_key, result)
+            
+            return result
+            
+        finally:
+            # Return tensor to memory pool
+            self.memory_pool.return_tensor(x_tensor)
     
     def create_train_state(self, rng: jax.random.PRNGKey, input_shape: Tuple[int, ...], 
                           network: PhotonicNetwork, learning_rate: float = 1e-3) -> train_state.TrainState:

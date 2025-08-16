@@ -282,11 +282,11 @@ def node_angle_encoding(features: jnp.ndarray, quantum_node: dict,
     return quantum_features
 
 
-def quantum_amplitude_enhancement(data: jnp.ndarray, quantum_node: dict,
+def quantum_amplitude_enhancement(data: jnp.ndarray, quantum_node,
                                 schmidt_rank: int) -> jnp.ndarray:
     """Apply quantum amplitude enhancement at node."""
-    node_fidelity = quantum_node.get("fidelity", 0.9)
-    qpu_type = quantum_node.get("qpu_type", "photonic")
+    node_fidelity = quantum_node.fidelity if hasattr(quantum_node, 'fidelity') else 0.9
+    qpu_type = quantum_node.qpu_type if hasattr(quantum_node, 'qpu_type') else "photonic"
     
     # Apply quantum enhancement based on node type
     if qpu_type == "photonic":

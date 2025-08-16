@@ -1,4 +1,4 @@
-#!/root/repo/test_env/bin/python
+#!/root/repo/test_env/bin/python3
 import sys
 from pennylane.devices.tests import cli
 if __name__ == '__main__':

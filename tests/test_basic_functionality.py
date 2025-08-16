@@ -6,6 +6,7 @@ Tests core components to ensure they work correctly.
 """
 
 import pytest
+import jax
 import jax.numpy as jnp
 import numpy as np
 from typing import Dict, Any
