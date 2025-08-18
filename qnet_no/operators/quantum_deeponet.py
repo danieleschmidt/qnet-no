@@ -131,7 +131,10 @@ class QuantumDeepONet(nn.Module):
             branch_out[:, None, :],  # [batch, 1, trunk_dim]
             trunk_out,               # [batch, n_queries, trunk_dim]
             network
-        )  # [batch, n_queries]
+        )  # [batch, 1, n_queries]
+        
+        # Squeeze the extra dimension to get [batch, n_queries]
+        outputs = jnp.squeeze(outputs, axis=1)
         
         return outputs + self.bias
     

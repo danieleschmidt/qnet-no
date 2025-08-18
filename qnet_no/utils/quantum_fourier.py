@@ -65,12 +65,12 @@ def quantum_fourier_modes(x: jnp.ndarray, modes: int, network: 'PhotonicNetwork'
             padded_shape = (batch_size, spatial_dims[0], spatial_dims[1], channels)
             x_padded = jnp.zeros(padded_shape, dtype=complex)
             x_padded = x_padded.at[:, :modes, :modes, :].set(x_quantum_enhanced)
-            return jnp.fft.ifft2(x_padded, axis=(1, 2))
+            return jnp.fft.ifft2(x_padded, axes=(1, 2))
         elif len(spatial_dims) == 3:
             padded_shape = (batch_size, spatial_dims[0], spatial_dims[1], spatial_dims[2], channels)
             x_padded = jnp.zeros(padded_shape, dtype=complex)
             x_padded = x_padded.at[:, :modes, :modes, :modes, :].set(x_quantum_enhanced)
-            return jnp.fft.ifftn(x_padded, axis=(1, 2, 3))
+            return jnp.fft.ifftn(x_padded, axes=(1, 2, 3))
     
     return x_quantum_enhanced
 

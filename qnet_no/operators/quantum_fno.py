@@ -67,7 +67,7 @@ class QuantumSpectralConv(nn.Module):
             'b...nc,mncos->b...mos', 
             x_ft, 
             weights,
-            network
+            network=network
         )
         
         # Inverse quantum Fourier transform  
