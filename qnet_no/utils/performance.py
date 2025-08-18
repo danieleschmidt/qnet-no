@@ -104,6 +104,10 @@ class ComputationCache:
         key_str = pickle.dumps(key_data, protocol=pickle.HIGHEST_PROTOCOL)
         return hashlib.sha256(key_str).hexdigest()
     
+    def generate_cache_key(self, *args, **kwargs) -> str:
+        """Public API for generating cache keys. Alias for _compute_key."""
+        return self._compute_key(*args, **kwargs)
+    
     def _make_hashable(self, obj):
         """Convert object to hashable representation."""
         if isinstance(obj, jnp.ndarray):
@@ -130,6 +134,8 @@ class ComputationCache:
         
         # Check disk cache if available
         if self.cache_dir:
+            if isinstance(self.cache_dir, str):
+                self.cache_dir = Path(self.cache_dir)
             cache_file = self.cache_dir / f"{key}.pkl"
             if cache_file.exists():
                 try:
@@ -156,6 +162,8 @@ class ComputationCache:
         # Save to disk cache if available
         if self.cache_dir:
             try:
+                if isinstance(self.cache_dir, str):
+                    self.cache_dir = Path(self.cache_dir)
                 cache_file = self.cache_dir / f"{key}.pkl"
                 with open(cache_file, 'wb') as f:
                     pickle.dump(value, f, protocol=pickle.HIGHEST_PROTOCOL)

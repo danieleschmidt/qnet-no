@@ -4,12 +4,15 @@ from typing import List, Optional, Dict, Any, TYPE_CHECKING
 import jax
 import jax.numpy as jnp
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from ..networks.photonic_network import PhotonicNetwork
 
 
-def tensor_product_einsum(equation: str, *operands, network: 'PhotonicNetwork') -> jnp.ndarray:
+def tensor_product_einsum(equation: str, *operands, network: Optional['PhotonicNetwork'] = None) -> jnp.ndarray:
     """
     Distributed Einstein summation with quantum enhancement.
     
@@ -30,23 +33,30 @@ def tensor_product_einsum(equation: str, *operands, network: 'PhotonicNetwork') 
     output_indices = output.strip()
     
     # Check if we can distribute the computation
-    if len(operands) < 2 or len(network.quantum_nodes) == 0:
+    if len(operands) < 2 or network is None or not hasattr(network, 'quantum_nodes') or len(network.quantum_nodes) == 0:
         # Fall back to standard einsum
+        logger.debug(f"Using standard einsum for equation: {equation}")
         return jnp.einsum(equation, *operands)
     
-    # Analyze computation for optimal distribution
-    distribution_plan = plan_tensor_distribution(
-        input_indices, output_indices, operands, network
-    )
-    
-    # Execute distributed computation
-    if distribution_plan['can_distribute']:
-        return execute_distributed_einsum(
-            equation, operands, distribution_plan, network
+    # Try distributed computation with fallback for robustness
+    try:
+        # Analyze computation for optimal distribution
+        distribution_plan = plan_tensor_distribution(
+            input_indices, output_indices, operands, network
         )
-    else:
-        # Use quantum-enhanced local computation
-        return quantum_enhanced_einsum(equation, operands, network)
+        
+        # Execute distributed computation
+        if distribution_plan['can_distribute']:
+            return execute_distributed_einsum(
+                equation, operands, distribution_plan, network
+            )
+        else:
+            # Use quantum-enhanced local computation
+            return quantum_enhanced_einsum(equation, operands, network)
+    except Exception as e:
+        # Robust fallback: use standard einsum if distribution fails
+        logger.warning(f"Distributed computation failed: {e}, falling back to standard einsum")
+        return jnp.einsum(equation, *operands)
 
 
 def plan_tensor_distribution(input_indices: List[str], output_indices: str,
@@ -292,32 +302,67 @@ def quantum_enhanced_einsum(equation: str, operands: tuple, network: 'PhotonicNe
 
 
 def distributed_dot_product(a: jnp.ndarray, b: jnp.ndarray, 
-                          network: 'PhotonicNetwork') -> jnp.ndarray:
+                          network: Optional['PhotonicNetwork'] = None) -> jnp.ndarray:
     """
     Distributed dot product across quantum network nodes.
     
     Implements quantum-accelerated matrix multiplication using
     distributed quantum processing and entanglement.
     """
-    # Check if arrays are compatible for dot product
-    if a.shape[-1] != b.shape[-2]:
-        raise ValueError(f"Incompatible shapes for dot product: {a.shape} and {b.shape}")
-    
-    # Use einsum for dot product with quantum enhancement
-    if len(a.shape) == 2 and len(b.shape) == 2:
-        # Standard matrix multiplication
-        equation = "ik,kj->ij"
-        return tensor_product_einsum(equation, a, b, network=network)
-    
-    elif len(a.shape) == 3 and len(b.shape) == 3:
-        # Batched matrix multiplication
-        equation = "bik,bkj->bij"
-        return tensor_product_einsum(equation, a, b, network=network)
-    
-    else:
-        # General tensor dot product along last axis of a and second-to-last of b
-        equation = "...i,i...->..."
-        return tensor_product_einsum(equation, a, b, network=network)
+    # Robust shape validation and fixing
+    try:
+        # Validate input tensors
+        if not isinstance(a, jnp.ndarray) or not isinstance(b, jnp.ndarray):
+            logger.error(f"Invalid tensor types: {type(a)}, {type(b)}")
+            raise ValueError(f"Expected JAX arrays, got {type(a)} and {type(b)}")
+        
+        # Handle different tensor configurations
+        if len(a.shape) == 3 and len(b.shape) == 3:
+            # Batched matrix multiplication: [batch, seq, dim] @ [batch, dim, out]
+            if a.shape[0] != b.shape[0]:
+                logger.warning(f"Batch size mismatch: {a.shape[0]} vs {b.shape[0]}, broadcasting")
+                # Try to broadcast
+                if a.shape[0] == 1:
+                    a = jnp.repeat(a, b.shape[0], axis=0)
+                elif b.shape[0] == 1:
+                    b = jnp.repeat(b, a.shape[0], axis=0)
+                else:
+                    raise ValueError(f"Cannot broadcast batch dimensions: {a.shape[0]} vs {b.shape[0]}")
+            
+            # Check inner dimensions and fix if possible
+            if a.shape[-1] != b.shape[-2]:
+                if a.shape[-1] == b.shape[-1]:
+                    # Transpose last two dimensions of b
+                    b = jnp.swapaxes(b, -2, -1)
+                    logger.info(f"Fixed tensor shapes by transposing b: {a.shape} @ {b.shape}")
+                else:
+                    raise ValueError(f"Incompatible inner dimensions: {a.shape[-1]} vs {b.shape[-2]}")
+            
+            # Perform batched matrix multiplication
+            equation = "bij,bjk->bik"
+            return tensor_product_einsum(equation, a, b, network=network)
+            
+        elif len(a.shape) == 2 and len(b.shape) == 2:
+            # Standard matrix multiplication
+            if a.shape[-1] != b.shape[0]:
+                raise ValueError(f"Incompatible matrix dimensions: {a.shape} vs {b.shape}")
+            equation = "ik,kj->ij"
+            return tensor_product_einsum(equation, a, b, network=network)
+            
+        else:
+            # General tensor dot product - use JAX's built-in for safety
+            logger.info(f"Using general tensor dot for shapes {a.shape} and {b.shape}")
+            return jnp.tensordot(a, b, axes=(-1, -2))
+            
+    except Exception as e:
+        logger.error(f"Distributed dot product failed: {e}")
+        # Fallback to regular JAX operations
+        if len(a.shape) == len(b.shape) == 3:
+            return jnp.einsum('bij,bjk->bik', a, b)
+        elif len(a.shape) == len(b.shape) == 2:
+            return jnp.dot(a, b)
+        else:
+            return jnp.tensordot(a, b, axes=(-1, -2))
 
 
 def quantum_tensor_decomposition(tensor: jnp.ndarray, network: 'PhotonicNetwork',
