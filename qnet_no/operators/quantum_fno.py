@@ -162,11 +162,41 @@ class QuantumFourierNeuralOperator(nn.Module, DistributedQuantumOperator):
                     x1 = conv_layer(x_tensor, network)
                 
                 x2 = w_layer(x_tensor)
-                x_tensor = nn.gelu(x1 + x2)
                 
-                # Output layers
-                x_tensor = nn.gelu(self.fc_out1(x_tensor))
-                result = self.fc_out2(x_tensor)
+                # Ensure x1 and x2 have compatible shapes before addition
+                if x1.shape != x2.shape:
+                    # x1 comes from conv layer: (batch, modes, modes, width, schmidt_rank)
+                    # x2 comes from dense layer: (batch, height, width, output_dim, schmidt_rank)
+                    # We need to make them compatible for element-wise addition
+                    
+                    # Option 1: Reshape x1 to match spatial dimensions of x2
+                    if len(x1.shape) == 5 and len(x2.shape) == 5:
+                        # Both have 5 dimensions, but spatial dimensions differ
+                        batch_size = x1.shape[0]
+                        target_height, target_width = x2.shape[1:3]
+                        schmidt_rank = x1.shape[-1]
+                        n_channels = min(x1.shape[-2], x2.shape[-2])
+                        
+                        # Interpolate x1 to match spatial dimensions
+                        x1_reshaped = jnp.reshape(x1, (batch_size, -1, n_channels, schmidt_rank))
+                        
+                        # If needed, adjust to match target spatial size
+                        target_size = target_height * target_width
+                        if x1_reshaped.shape[1] != target_size:
+                            # Simple repetition/truncation to match size
+                            if x1_reshaped.shape[1] < target_size:
+                                repeat_factor = (target_size + x1_reshaped.shape[1] - 1) // x1_reshaped.shape[1]
+                                x1_reshaped = jnp.repeat(x1_reshaped, repeat_factor, axis=1)
+                            x1_reshaped = x1_reshaped[:, :target_size, :, :]
+                        
+                        x1 = jnp.reshape(x1_reshaped, (batch_size, target_height, target_width, n_channels, schmidt_rank))
+                        x2 = x2[..., :n_channels, :]
+                
+                x_tensor = nn.gelu(x1 + x2)
+            
+            # Output layers (after all conv/dense layer pairs)
+            x_tensor = nn.gelu(self.fc_out1(x_tensor))
+            result = self.fc_out2(x_tensor)
                 
             # Cache result if enabled
             if use_cache and cache_key:

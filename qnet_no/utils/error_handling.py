@@ -195,7 +195,8 @@ class ErrorRecovery:
 
 def error_boundary(error_type: Type[QuantumError] = QuantumError,
                   severity: ErrorSeverity = ErrorSeverity.MEDIUM,
-                  reraise: bool = True, default_return: Any = None):
+                  reraise: bool = True, default_return: Any = None,
+                  operation_name: Optional[str] = None):
     """
     Decorator for creating error boundaries around functions.
     
@@ -204,6 +205,7 @@ def error_boundary(error_type: Type[QuantumError] = QuantumError,
         severity: Severity level for wrapped errors
         reraise: Whether to reraise the wrapped error
         default_return: Default value to return if error occurs and reraise=False
+        operation_name: Optional name for the operation being wrapped
     """
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
@@ -218,6 +220,7 @@ def error_boundary(error_type: Type[QuantumError] = QuantumError,
             except Exception as e:
                 context = {
                     'function': func.__name__,
+                    'operation_name': operation_name or func.__name__,
                     'args_types': [type(arg).__name__ for arg in args],
                     'kwargs_keys': list(kwargs.keys()),
                     'traceback': traceback.format_exc()
