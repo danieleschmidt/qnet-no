@@ -450,35 +450,66 @@ class AutonomousGoalFormulator:
         return goal
         
     def _analyze_thought_patterns_for_goals(self, thoughts: List[QuantumThought]) -> Optional[np.ndarray]:
-        """Analyze thought patterns to extract goal motivations."""
+        """Analyze thought patterns to extract goal motivations using advanced quantum pattern recognition."""
         if not thoughts:
             return None
             
-        # Combine semantic embeddings of high-consciousness thoughts
+        # Multi-layer consciousness analysis
         high_consciousness_thoughts = [t for t in thoughts if t.consciousness_level > 0.5]
         
         if not high_consciousness_thoughts:
             return None
             
-        # Average semantic embeddings weighted by consciousness level
-        weighted_sum = np.zeros_like(high_consciousness_thoughts[0].semantic_embedding)
-        total_weight = 0
+        # Enhanced quantum pattern analysis
+        thought_vectors = np.array([t.quantum_superposition for t in high_consciousness_thoughts])
+        entanglement_patterns = np.array([t.entanglement_signature for t in high_consciousness_thoughts])
+        semantic_embeddings = np.array([t.semantic_embedding for t in high_consciousness_thoughts])
         
-        for thought in high_consciousness_thoughts:
-            weight = thought.consciousness_level
-            weighted_sum += weight * thought.semantic_embedding
-            total_weight += weight
+        # Multi-dimensional correlation analysis
+        quantum_correlation = np.corrcoef(thought_vectors)
+        semantic_correlation = np.corrcoef(semantic_embeddings)
+        entanglement_correlation = np.corrcoef(entanglement_patterns)
+        
+        # Quantum interference-based goal emergence detection
+        combined_correlations = (quantum_correlation + semantic_correlation + entanglement_correlation) / 3.0
+        eigenvals, eigenvecs = np.linalg.eigh(combined_correlations)
+        
+        # Find the dominant pattern that indicates goal formation
+        dominant_eigenval = np.max(eigenvals)
+        dominant_eigenvec = eigenvecs[:, np.argmax(eigenvals)]
+        
+        # Quantum coherence analysis
+        coherence_measure = np.abs(dominant_eigenval) / len(high_consciousness_thoughts)
+        
+        # Enhanced goal motivation using quantum superposition
+        if dominant_eigenval > 0.7 and coherence_measure > 0.6:
+            # Weight semantic embeddings by consciousness level and quantum coherence
+            weighted_sum = np.zeros_like(semantic_embeddings[0])
+            total_weight = 0
             
-        if total_weight == 0:
-            return None
+            for i, thought in enumerate(high_consciousness_thoughts):
+                quantum_weight = np.abs(dominant_eigenvec[i]) * thought.consciousness_level
+                weighted_sum += quantum_weight * thought.semantic_embedding
+                total_weight += quantum_weight
+                
+            if total_weight == 0:
+                return None
+                
+            goal_motivation = weighted_sum / total_weight
             
-        goal_motivation = weighted_sum / total_weight
+            # Add quantum exploration component based on entanglement patterns
+            quantum_exploration = np.mean(entanglement_patterns, axis=0) * 0.15
+            goal_motivation = 0.85 * goal_motivation + quantum_exploration
+            
+            # Normalize with quantum enhancement
+            goal_motivation = goal_motivation / np.linalg.norm(goal_motivation)
+            
+            logger.debug(f"🧠 Enhanced goal pattern: eigenval={dominant_eigenval:.3f}, "
+                        f"coherence={coherence_measure:.3f}, thoughts={len(high_consciousness_thoughts)}")
+            
+            return goal_motivation
         
-        # Add some random exploration component
-        exploration_component = np.random.normal(0, 0.1, len(goal_motivation))
-        goal_motivation = 0.9 * goal_motivation + 0.1 * exploration_component
-        
-        return goal_motivation
+        return None
         
     def _generate_goal_description(self, motivation: np.ndarray, consciousness_level: float) -> str:
         """Generate human-readable goal description."""
