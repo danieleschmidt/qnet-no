@@ -31,12 +31,12 @@ from pathlib import Path
 import hashlib
 import pickle
 
-from ..utils.logging_config import get_logger
+from ..utils.logging_config import get_quantum_logger
 from ..utils.metrics import MetricsCollector
 from ..utils.validation import validate_quantum_parameters
 from ..utils.error_handling import QuantumCircuitError, handle_quantum_error
 
-logger = get_logger(__name__)
+logger = get_quantum_logger(__name__)
 
 @dataclass
 class QuantumPattern:
