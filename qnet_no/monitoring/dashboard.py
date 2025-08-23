@@ -32,9 +32,9 @@ except ImportError:
     STREAMLIT_AVAILABLE = False
 
 from ..utils.metrics import get_metrics_collector, MetricsCollector
-from ..utils.logging_config import get_logger
+from ..utils.logging_config import get_quantum_logger
 
-logger = get_logger(__name__)
+logger = get_quantum_logger(__name__)
 
 
 class MonitoringDashboard:

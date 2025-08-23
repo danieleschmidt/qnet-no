@@ -50,6 +50,11 @@ class DataError(QuantumError):
     pass
 
 
+class GlobalizationError(QuantumError):
+    """Errors related to globalization and internationalization."""
+    pass
+
+
 class TrainingError(QuantumError):
     """Errors related to model training."""
     pass
