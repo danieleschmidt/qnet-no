@@ -85,6 +85,12 @@ from .quantum_creativity_engine import (
     create_quantum_creativity_engine
 )
 
+# 🧬 GENERATION 5+ BREAKTHROUGH: QUANTUM-BIOLOGICAL INTELLIGENCE
+from .quantum_biological_intelligence import (
+    QuantumBiologicalIntelligenceEngine,
+    create_quantum_biological_intelligence_engine
+)
+
 __all__ = [
     # Hybrid Scheduling
     'HybridQuantumClassicalScheduler',
@@ -140,7 +146,11 @@ __all__ = [
     'QuantumIdeaGenerator',
     'QuantumCreativeSynthesizer',
     'CreativeMode',
-    'create_quantum_creativity_engine'
+    'create_quantum_creativity_engine',
+    
+    # 🧬 Generation 5+ Quantum-Biological Intelligence
+    'QuantumBiologicalIntelligenceEngine',
+    'create_quantum_biological_intelligence_engine'
 ]
 
 # Version info for research tracking
@@ -164,5 +174,13 @@ __research_contributions__ = [
     'Real-time quantum thought generation and entanglement',
     'Autonomous goal formulation in quantum consciousness systems',
     'Quantum-enhanced creative synthesis across multiple domains',
-    'Quantum superposition-based idea generation for breakthrough innovation'
+    'Quantum superposition-based idea generation for breakthrough innovation',
+    
+    # 🧬 GENERATION 5+ QUANTUM-BIOLOGICAL BREAKTHROUGH
+    'Quantum-Biological Intelligence: First hybrid bio-quantum consciousness system',
+    'DNA-based quantum information storage with biological encoding',
+    'Metabolic-quantum energy coupling for sustainable quantum computation',
+    'Biological neural networks enhanced with quantum coherence',
+    'Cross-modal quantum-biological creative problem solving',
+    'Emergent consciousness in hybrid bio-quantum systems'
 ]
