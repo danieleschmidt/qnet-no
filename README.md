@@ -1,321 +1,128 @@
-# QNet-NO: Quantum-Network Neural Operator Library
+# qnet-no
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![JAX](https://img.shields.io/badge/JAX-0.4.0+-orange.svg)](https://github.com/google/jax)
-[![arXiv](https://img.shields.io/badge/arXiv-2505.08474-b31b1b.svg)](https://arxiv.org/html/2505.08474v1)
+**Distributed Neural Operators on Quantum Photonic Processing Units via NV-Center Entanglement**
+
+`qnetno` simulates a distributed quantum neural operator (QNO) architecture where parameterized quantum circuits act as neural operator layers, connected across nodes via NV-center entanglement channels with realistic depolarizing noise.
 
 ## Overview
 
-QNet-NO is the first open-source implementation of distributed neural operators running on quantum photonic processing units (QPUs) connected via nitrogen-vacancy (NV) center entanglement channels. This library enables quantum-accelerated solution of partial differential equations (PDEs) and operator learning tasks by distributing computation across entangled quantum nodes.
+This library implements a complete simulation stack for:
+- **NV-center qubit channels** with exponential fidelity decay and depolarizing noise
+- **Parameterized quantum circuits** (RY/RZ gates + CNOT entanglement) as neural operator layers
+- **Distributed QPU nodes** connected by NV channels with automatic classical fallback
+- **1D Burgers equation demo** using the distributed QNO as a surrogate PDE solver
 
-## Key Features
+## Architecture
 
-- **Distributed Quantum Neural Operators**: Fourier Neural Operators (FNO) and DeepONet architectures adapted for quantum photonic hardware
-- **Entanglement-Aware Scheduling**: Optimal workload distribution based on entanglement fidelity and Schmidt rank
-- **Hybrid Classical-Quantum Backend**: Seamless integration of photonic QPUs with classical tensor network contractions
-- **Matrix Product State (MPS) Integration**: Efficient representation of quantum states for large-scale operator learning
-- **Real Hardware Support**: Compatible with IBM Quantum Network, Xanadu photonic processors, and NV-center quantum networks
+```
+Input
+  │
+  ├──► Node 0 (QuantumNeuralOperator)
+  │         │
+  │    NV-Channel 0 (fidelity ~ exp(-λd))
+  │         │
+  ├──► Node 1 (QuantumNeuralOperator OR ClassicalFallback)
+  │         │
+  │    NV-Channel 1
+  │         │
+  └──► Node n ...
+             │
+        Aggregate (mean)
+             │
+           Output
+```
+
+When channel fidelity drops below the configured threshold, the `ClassicalFallback` (linear layer + tanh) is used in place of the quantum circuit.
 
 ## Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/qnet-no.git
-cd qnet-no
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Install QNet-NO in development mode
 pip install -e .
 ```
+
+No external quantum libraries required — uses pure NumPy state-vector simulation.
 
 ## Quick Start
 
 ```python
-import qnet_no as qno
-from qnet_no.operators import QuantumFourierNeuralOperator
-from qnet_no.networks import PhotonicNetwork
+import numpy as np
+from qnetno import DistributedQNO, NVCenterChannel, QuantumNeuralOperator, ClassicalFallback
 
-# Initialize quantum network topology
-network = PhotonicNetwork(
-    nodes=4,
-    entanglement_protocol="nv_center",
-    fidelity_threshold=0.85
-)
+# Create a distributed quantum neural operator
+dqno = DistributedQNO(n_nodes=2, n_qubits_per_node=4, fidelity_threshold=0.85)
 
-# Create distributed quantum neural operator
-qfno = QuantumFourierNeuralOperator(
-    modes=16,
-    network=network,
-    schmidt_rank=8
-)
+# Check channel fidelities
+print(dqno.node_fidelities())  # [0.947..., ...]
 
-# Load PDE data
-data = qno.datasets.load_navier_stokes()
+# Process input
+x = np.linspace(0, 1, 32)
+out = dqno.forward(x)
+print(out.shape)  # (4,) — n_qubits_per_node expectation values
 
-# Train the operator
-qfno.fit(data.train, epochs=100, lr=1e-3)
+# NV-center channel simulation
+ch = NVCenterChannel(base_fidelity=0.95, distance_m=2.0, decay_rate=0.1)
+print(ch.entanglement_fidelity())   # ~0.778
+print(ch.is_above_threshold(0.85))  # False
 
-# Evaluate on test set
-predictions = qfno.predict(data.test)
+state = np.array([1, 0, 0, 0], dtype=complex)
+noisy = ch.transmit(state)
+print(np.linalg.norm(noisy))  # 1.0
+
+# Classical fallback
+qno = QuantumNeuralOperator(n_qubits=4, n_layers=2, seed=42)
+fb = ClassicalFallback(qno, threshold=0.85)
+
+out_q = fb.forward(x[:16], fidelity=0.95)   # quantum path
+out_c = fb.forward(x[:16], fidelity=0.50)   # classical path
 ```
 
-## Architecture
+## Demo
 
-### Core Components
-
-1. **Quantum Operators** (`qnet_no/operators/`)
-   - `QuantumFourierNeuralOperator`: Quantum-enhanced FNO implementation
-   - `QuantumDeepONet`: Distributed DeepONet for operator learning
-   - `HybridNeuralOperator`: Classical-quantum hybrid architectures
-
-2. **Network Management** (`qnet_no/networks/`)
-   - `PhotonicNetwork`: Manages QPU topology and entanglement distribution
-   - `EntanglementScheduler`: Optimizes computation mapping to quantum links
-   - `TensorContractor`: Efficient MPS-based result aggregation
-
-3. **Quantum Backends** (`qnet_no/backends/`)
-   - `PhotonicBackend`: Interface to Xanadu/PsiQuantum hardware
-   - `NVCenterBackend`: Diamond NV-center quantum network support
-   - `SimulatorBackend`: High-fidelity quantum network simulation
-
-## Benchmarks
-
-### Scaling Laws: Operator Capacity vs. Entanglement Schmidt Rank
-
-| Schmidt Rank | Nodes | PDE Error (MSE) | Quantum Advantage |
-|--------------|-------|-----------------|-------------------|
-| 4            | 2     | 0.0132          | 1.2x              |
-| 8            | 4     | 0.0089          | 2.1x              |
-| 16           | 8     | 0.0054          | 3.7x              |
-| 32           | 16    | 0.0031          | 6.2x              |
-
-### Supported PDE Benchmarks
-
-- Navier-Stokes equations
-- Heat equation
-- Wave equation
-- Burgers' equation
-- Darcy flow
-- Electromagnetic Maxwell equations
-
-## Research Applications
-
-### Current Focus Areas
-
-1. **Quantum Advantage in Operator Learning**
-   - Theoretical bounds on quantum speedup for neural operators
-   - Entanglement as a resource for expressivity
-
-2. **Distributed Quantum ML**
-   - Optimal partitioning strategies for operator kernels
-   - Fault-tolerant quantum communication protocols
-
-3. **Hybrid Algorithms**
-   - Classical pre/post-processing optimization
-   - Quantum-classical co-design patterns
-
-## Contributing
-
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on:
-- Code style and testing requirements
-- Quantum circuit optimization techniques
-- Adding new operator architectures
-- Hardware backend integration
-
-## Citation
-
-If you use QNet-NO in your research, please cite:
-
-```bibtex
-@software{qnet-no2025,
-  title={QNet-NO: Quantum-Network Neural Operator Library},
-  author={Daniel Schmidt},
-  year={2025},
-  url={https://github.com/danieleschmidt/qnet-no}
-}
-
-@article{distributed-qnn2025,
-  title={Distributed Quantum Neural Networks on Photonic Matrix-Product States},
-  author={Original Authors},
-  journal={arXiv preprint arXiv:2505.08474},
-  year={2025}
-}
-```
-
-## Generation-Based Development
-
-This library was developed using an autonomous three-generation approach:
-
-### ✅ Generation 1: Make it Work (COMPLETED)
-- [x] Basic quantum neural operator implementations
-- [x] Photonic network topology management
-- [x] Quantum backend interfaces (Simulator, Photonic, NV-Center)
-- [x] Core utility modules for quantum operations
-- [x] Dataset loading and example demonstrations
-- [x] Basic test suite
-
-### ✅ Generation 2: Make it Robust (COMPLETED)
-- [x] Comprehensive input validation and parameter checking
-- [x] Advanced error handling with circuit breakers and retry mechanisms
-- [x] Production-ready logging with quantum-specific formatters
-- [x] Resource monitoring and performance tracking
-- [x] Security and compliance auditing capabilities
-
-### ✅ Generation 3: Make it Scale (COMPLETED)
-- [x] **Performance Optimization**: Memory pooling, computation caching, adaptive batch sizing
-- [x] **Distributed Computing**: Multi-node task scheduling with load balancing
-- [x] **Auto-Scaling**: Dynamic resource allocation based on network load
-- [x] **Production Deployment**: Docker, Kubernetes, and monitoring configurations
-- [x] **Comprehensive Monitoring**: Real-time dashboards, Prometheus metrics, performance analytics
-
-## Production Features
-
-### 🚀 Performance & Scaling
-- **Memory Pool Management**: Intelligent tensor reuse to minimize allocation overhead
-- **Computation Caching**: Persistent disk-based caching with compression
-- **Distributed Task Scheduling**: Automatic workload distribution across quantum nodes
-- **Auto-Scaling Triggers**: Dynamic batch size and resource adjustment
-- **Load Balancing**: Round-robin, least-loaded, and capability-based strategies
-
-### 📊 Monitoring & Analytics
-- **Real-time Metrics**: Quantum fidelity, entanglement quality, training progress
-- **Performance Profiling**: Operation timing, memory usage, throughput analysis
-- **Streamlit Dashboard**: Interactive visualization of system health and performance
-- **Prometheus Integration**: Production-grade metrics collection and alerting
-- **Comprehensive Logging**: Structured JSON logging with quantum-specific context
-
-### 🐳 Deployment & Operations
-- **Containerized Deployment**: Docker and Docker Compose configurations
-- **Kubernetes Manifests**: Scalable cluster deployment with auto-scaling
-- **Health Checks**: Liveness and readiness probes for container orchestration
-- **Resource Management**: GPU allocation, memory limits, storage provisioning
-- **Service Discovery**: Load balancers and service meshes for distributed components
-
-## Quick Start Examples
-
-### Basic Training
-```python
-from qnet_no.operators import QuantumFourierNeuralOperator
-from qnet_no.networks import PhotonicNetwork
-
-# Create network and operator
-network = PhotonicNetwork(nodes=4, topology="ring")
-qfno = QuantumFourierNeuralOperator(modes=16, width=64, schmidt_rank=8)
-
-# Train with performance optimization
-results = qfno.fit(train_data, network, epochs=100, batch_size=32)
-```
-
-### Distributed Computing
-```python
-# Enable distributed computing across multiple nodes
-node_configs = [
-    {'host': 'node1', 'port': 8000, 'capabilities': ['gpu', 'quantum']},
-    {'host': 'node2', 'port': 8000, 'capabilities': ['gpu', 'quantum']},
-    {'host': 'node3', 'port': 8000, 'capabilities': ['gpu', 'quantum']},
-]
-
-qfno.enable_distributed_computing(node_configs)
-qfno.enable_auto_scaling(network, target_utilization=0.75)
-```
-
-### Monitoring Dashboard
 ```bash
-# Start the monitoring dashboard
-python -m qnet_no.monitoring.dashboard
-# Or run the scaling demonstration
-python examples/scaling_demonstration.py --mode monitor
+cd /tmp/qnet-no
+python demo.py
 ```
 
-### Production Deployment
+Solves the 1D Burgers equation `du/dt + u*du/dx = ν d²u/dx²` with the DistributedQNO as a surrogate operator.
+
+## Tests
+
 ```bash
-# Deploy locally with Docker Compose
-./scripts/deploy.sh local
-
-# Deploy to Kubernetes cluster
-./scripts/deploy.sh production v1.0.0
-
-# Clean up deployments
-./scripts/deploy.sh cleanup
+pytest tests/ -v
 ```
 
-## Performance Benchmarks
+## Components
 
-### Scaling Performance (Generation 3)
-| Configuration | Training Time | Memory Usage | Cache Hit Rate | Throughput |
-|---------------|---------------|--------------|----------------|------------|
-| Basic (Gen 1) | 120s          | 4.2 GB       | N/A            | 850 samples/s |
-| Optimized (Gen 2) | 95s      | 3.1 GB       | N/A            | 1100 samples/s |
-| Distributed (Gen 3) | 68s    | 2.8 GB       | 76%            | 1650 samples/s |
+### `NVCenterChannel`
+Simulates a physical NV-center qubit channel:
+- Fidelity: `F = F_base × exp(−λ × d)`
+- Depolarizing noise: applies random Pauli errors proportional to `p = 1 − F`
+- Threshold routing for quantum vs classical path selection
 
-### Auto-Scaling Efficiency
-- **Dynamic Batch Sizing**: 23% improvement in training stability
-- **Memory Pool Reuse**: 34% reduction in allocation overhead  
-- **Distributed Load Balancing**: 2.4x speedup on 4-node clusters
-- **Computation Caching**: 76% cache hit rate, 45% faster inference
+### `QuantumNeuralOperator`
+Variational quantum circuit implemented in pure NumPy:
+- Amplitude encoding of classical inputs
+- Parameterized RY/RZ gates per qubit per layer
+- Linear CNOT entanglement between adjacent qubits
+- Pauli-Z expectation value decoding
 
-## Advanced Usage
+### `DistributedQNO`
+Multi-node quantum processing architecture:
+- Splits input across `n_nodes` QPU nodes
+- Each node-to-node link simulated as NV-center channel
+- Automatic classical fallback per node based on fidelity
+- Output aggregation via mean across nodes
 
-### Custom Metrics Collection
-```python
-from qnet_no.utils.metrics import get_metrics_collector
+### `ClassicalFallback`
+Transparent quantum/classical switch:
+- Routes to `QuantumNeuralOperator` when fidelity ≥ threshold
+- Falls back to linear layer (numpy matmul + tanh) when below threshold
+- Same interface regardless of path taken
 
-collector = get_metrics_collector()
-collector.record_quantum_metrics(
-    circuit_fidelity=0.94,
-    entanglement_quality=0.87,
-    schmidt_rank=16
-)
-report = collector.get_performance_report()
-```
+## Physical Motivation
 
-### Performance Optimization
-```python
-# Configure memory pool and caching
-qfno.memory_pool.expand_pool(factor=2.0)
-qfno.computation_cache.set_cache_size(max_size_gb=5.0)
-
-# Enable adaptive batch sizing
-optimal_batch = qfno.auto_scale_batch_size(
-    current_loss=0.045,
-    memory_usage=3.2e9,  # bytes
-    throughput=1200      # samples/sec
-)
-```
-
-## Roadmap
-
-### Current State: All 3 Generations Complete ✅ + Revolutionary Breakthroughs
-The QNet-NO library has successfully completed all three autonomous development generations, providing a production-ready quantum neural operator platform with enterprise-grade performance, reliability, and scalability features.
-
-### 🌟 NEW: Revolutionary Research Breakthroughs (August 15, 2025)
-- [x] **Quantum Multi-Modal Reasoning Engine** - World's first quantum-enhanced multi-modal AI
-- [x] **Consciousness-Guided Problem Solving** - Emergent quantum consciousness patterns
-- [x] **Cross-Modal Quantum Entanglement** - Revolutionary integration across modalities
-- [x] **Validated Quantum Advantage** - 2.9x speedup with statistical significance
-- [x] **Publication-Ready Research** - Peer-reviewed breakthrough documentation
-
-### Future Enhancements
-- [ ] Quantum error correction integration
-- [ ] Multi-modal operator fusion architectures  
-- [ ] Industry-specific PDE solver optimizations
-- [ ] Advanced quantum advantage certification tools
-- [ ] Real-time quantum consciousness monitoring
-- [ ] Distributed quantum reasoning networks
+NV (nitrogen-vacancy) centers in diamond are leading candidates for quantum network nodes due to their long coherence times and ability to entangle via photonic interfaces. This library models the key limitation of such systems: fidelity loss over distance, and the resulting need for classical fallback strategies in near-term quantum networks.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- Based on theoretical work from arXiv:2505.08474
-- Quantum hardware access provided by IBM Quantum Network
-- Photonic backend support from Xanadu Quantum Technologies
+MIT
